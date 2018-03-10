@@ -279,3 +279,16 @@ _×'_ : {A A' B B' : Set} → (A → A') → (B → B') → A × B → A' × B'
   → --------------
   subst B (Σeq₁ p) (snd x) ≡ snd y
 Σeq₂ refl = refl
+
+×ext :
+  {ℓ m : Level}
+  {A : Set ℓ}
+  {B : Set m}
+  {x x' : A}
+  {y : B}
+  {y' : B}
+  (p : x ≡ x')
+  (q : y ≡ y')
+  → --------------------
+  (x , y) ≡ (x' , y')
+×ext refl refl = refl
