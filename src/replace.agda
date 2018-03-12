@@ -274,6 +274,46 @@ replaceIndFactors : (A : Set)(B : Replace A → Set)(β : isFib B)(f : (a : A) �
   → (λ a → replaceInd A B β f (ι a)) ≡ f
 replaceIndFactors A B β f = refl 
 
+
+-- A more general induction principle
+replaceInd' :
+  (A : Set)
+  (B : Replace A → Set)
+  (is-prop : (a : Replace A)(b b' : B a) → b ≡ b')
+  (pure : (a : A) → B ([ pure a ]/ TotalComps))
+  (comp :
+    (e : OI)
+    (φ : Cof)
+    (f : [ φ ] → Int → Replace A)
+    (a₀ : ⟦ a₀ ∈ Replace A ∣ (φ , f) ∙ ⟨ e ⟩ ↗ a₀ ⟧)
+    (bf : (u : [ φ ])(i : Int) → B (f u i))
+    (b₀ : B (fst a₀))
+    → --------------
+    B ([ comp e φ f a₀ ]/ TotalComps)
+  )
+  -- (resp :
+  --   (e : OI)
+  --   (φ : Cof)
+  --   (f : [ φ ] → Int → Replace A)
+  --   (a₀ : ⟦ a₀ ∈ Replace A ∣ (φ , f) ∙ ⟨ e ⟩ ↗ a₀ ⟧)
+  --   (u : [ φ ])
+  --   (a : FreeComps A)
+  --   (eq : [ a ]/ TotalComps ≡ f u ⟨ ! e ⟩)
+  --   → --------------
+  --   subst B (qeq TotalComps (total e φ f a₀ u a eq)) {!pure ?!} ≡ {!comp !}
+  -- )
+  → --------------------
+  (x : Replace A) → B x
+{-# TERMINATING #-}
+replaceInd' A B is-prop f c = elim where
+  elim : (x : Replace A) → B x
+  f' : (x : FreeComps A) → B ([ x ]/ TotalComps)
+  resp : (x y : FreeComps A) (r : TotalComps x y) → subst B (qeq TotalComps r) (f' x) ≡ f' y
+  elim = qind TotalComps B f' resp
+  f' (pure x) = f x
+  f' (comp e φ g (a₀ , ext)) = c e φ g (a₀ , ext) (λ u i → elim (g u i)) (elim a₀)
+  resp x y r = is-prop ([ y ]/ TotalComps) _ (f' y)
+
 ----------------------
 -- 𝕊¹
 ----------------------

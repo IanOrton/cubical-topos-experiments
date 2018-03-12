@@ -118,6 +118,7 @@ homogAndTranspToFib {Γ = Γ} A hα tα e p φ f (x₁ , extends₁) =
 ----------------------------------------------------------------------
 
 record DemiEndo : Set (lsuc lzero) where
+  constructor endo
   field
     obf : Set → Set
     homf : {A B : Set} → (A → B) → (obf A → obf B)
@@ -141,3 +142,92 @@ TranspFibEndo F A tα e p φ cst y₁ =
     trans
       (cong (homf F) (funext (λ x₁ → snd (tα e p φ cst x₁) u)))
       (symm (endosubst F A (cst u ⟨ ! e ⟩)))
+
+----------------------------------------------------------------------
+-- PreSuspension is a DemiEndo
+----------------------------------------------------------------------
+
+preSusp' : Set → Set
+preSusp' X = preSusp X / MeridEnds
+
+preSuspFunc : {A B : Set} → (A → B) → preSusp A → preSusp B
+preSuspFunc _ preNorth = preNorth
+preSuspFunc _ preSouth = preSouth
+preSuspFunc f (preMerid x i) = preMerid (f x) i
+
+preSuspEndo : DemiEndo
+preSuspEndo = endo preSusp' func pres-id where
+
+  func : {A B : Set} → (A → B) → preSusp' A → preSusp' B
+  func {A} {B} f = qind MeridEnds _ (λ x → [ preSuspFunc f x ]/ MeridEnds) resp where
+    resp : (x y : preSusp A) (r : MeridEnds x y) →
+      subst _ (qeq MeridEnds r) ([ preSuspFunc f x ]/ MeridEnds) ≡ [ preSuspFunc f y ]/ MeridEnds
+    resp .(preMerid x O) .preNorth (meridO x) =
+      trans (qeq MeridEnds (meridO (f x)))
+        (substconst (preSusp' B) (qeq MeridEnds (meridO x)) _)
+    resp .(preMerid x I) .preSouth (meridI x) =
+      trans (qeq MeridEnds (meridI (f x)))
+        (substconst (preSusp' B) (qeq MeridEnds (meridI x)) _)
+
+  pres-id : (A : Set) → func id ≡ id
+  pres-id A =
+    funext (qind MeridEnds (λ x → func id x ≡ x)
+      (λ{ preNorth → refl ; preSouth → refl ; (preMerid x x₁) → refl})
+      (λ _ _ _ → uipImp)
+    )
+
+----------------------------------------------------------------------
+-- Fibrant replacement is a DemiEndo
+----------------------------------------------------------------------
+
+replaceEndo : DemiEndo
+replaceEndo = endo Replace replaceFunc pres-id where
+
+  replaceFunc : {A B : Set} → (A → B) → Replace A → Replace B
+  replaceFunc {A} {B} f = replaceElim A (Replace B) (replaceIsFib B) (ι ∘ f) 
+
+  pres-id : (A : Set) → replaceFunc id ≡ id
+  pres-id A = funext (replaceInd' A (λ x → replaceFunc id x ≡ x) (λ _ → uip) (λ _ → refl) comp-case) where
+    comp-case : (e : OI) (φ : Cof) (f : [ φ ] → Int → Replace A)
+      (a₀ : set (Replace A) (_↗_ ((φ , f) ∙ ⟨ e ⟩))) →
+      ((u : [ φ ]) (i : Int) → replaceFunc id (f u i) ≡ f u i) →
+      replaceFunc id (fst a₀) ≡ fst a₀ →
+      replaceFunc id ([ comp e φ f a₀ ]/ TotalComps) ≡ [ comp e φ f a₀ ]/ TotalComps
+    comp-case e φ f a₀ rec-f rec-a₀ = cong (λ fa₀ → [ comp e φ (fst fa₀) (snd fa₀) ]/ TotalComps)
+      (ext-principle (funext (λ u → funext (rec-f u))) rec-a₀) where
+      ext-principle :
+        {f f' : [ φ ] → Int → Replace A}
+        {a₀  : ⟦ a₀ ∈ Replace A ∣ (φ , f)  ∙ ⟨ e ⟩ ↗ a₀ ⟧}
+        {a₀' : ⟦ a₀ ∈ Replace A ∣ (φ , f') ∙ ⟨ e ⟩ ↗ a₀ ⟧}
+        → f ≡ f' → fst a₀ ≡ fst a₀'
+        → (f , a₀) ≡ (f' , a₀')
+      ext-principle {f} refl refl = Σext refl (incMono (_↗_ ((φ , f)  ∙ ⟨ e ⟩)) _ _ refl)
+
+----------------------------------------------------------------------
+-- Therefore Suspension is a DemiEndo
+----------------------------------------------------------------------
+
+endoComp : (g f : DemiEndo) → DemiEndo
+endoComp (endo g gfunc gid) (endo f ffunc fid) =
+  endo (g ∘ f) (λ h → gfunc (ffunc h)) (λ A → trans (gid (f A)) (cong gfunc (fid A)))
+
+SuspEndo : DemiEndo
+SuspEndo = endoComp replaceEndo preSuspEndo
+
+SuspEndoIsSusp : obf SuspEndo ≡ Susp
+SuspEndoIsSusp = refl
+
+----------------------------------------------------------------------
+-- And so the suspension of a fibration is a fibration
+----------------------------------------------------------------------
+
+suspFib :
+  {Γ : Set}
+  (A : Γ → Set)
+  (α : isFib A)
+  → ---------------
+  isFib (Susp ∘ A)
+suspFib A α =
+  homogAndTranspToFib (Susp ∘ A)
+    (λ e x → replaceIsFib (preSusp' (A x)) e (λ _ → tt))
+    (TranspFibEndo SuspEndo A (fibToTransp A α))
