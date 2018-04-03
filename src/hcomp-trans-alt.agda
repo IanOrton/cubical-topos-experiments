@@ -83,6 +83,12 @@ new→old A tα e p φ cst x₁ = (fst x₀,ext , λ u → trans (snd x₀,ext u
 ----------------------------------------------------------------------
 -- The new definition still allows us to prove the following:
 ----------------------------------------------------------------------
+fibToTransp : ∀{ℓ}{Γ : Set ℓ}(A : Γ → Set) → isFib A → isTranspFib' A
+fibToTransp A α e p φ cst x₁ = α e p φ (λ u i → coe (cst u i) x₁) (x₁ , extends)
+  where
+  extends : (u : [ φ ]) → coe (cst u ⟨ e ⟩) x₁ ≡ x₁
+  extends u = cong (λ eq → coe eq x₁) (uip (cst u ⟨ e ⟩) refl)
+
 homogAndTranspToFib' : ∀{ℓ}{Γ : Set ℓ}(A : Γ → Set) → isHomogFib A → isTranspFib' A → isFib A
 homogAndTranspToFib' {Γ = Γ} A hα tα e p φ f (x₁ , extends₁) =
   subst (λ g → ⟦ x₀ ∈ ((A ∘ p) ⟨ ! e ⟩) ∣ (φ , g) ↗ x₀ ⟧)
